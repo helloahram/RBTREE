@@ -4,20 +4,26 @@
 
 rbtree *new_rbtree(void)
 {
+  // rebtree 구조체에 대한 메모리 할당
   rbtree *p = (rbtree *)calloc(1, sizeof(rbtree));
-  // TODO: initialize struct if needed
+  if (NULL == p) // p 메모리 할당에 실패할 경우
+    return NULL;
 
+  // nil Node 구조체에 대한 메모리 할당
   p->nil = (node_t *)calloc(1, sizeof(node_t));
-  if (NULL == p->nil)
+  if (NULL == p->nil) // p->nil 메모리 할당에 실패할 경우
   {
-    free(p);
+    free(p); // p 메모리 할당 해제
     return NULL;
   }
-  // calloc 으로 메모리 할당 + 초기화 진행
 
+  // calloc 이 메모리 할당 + 초기화 이기 때문에 색만 지정
   p->nil->color = RBTREE_BLACK;
-  p->root = p->nil;
 
+  // 트리의 Root Node 와 nil Node 초기화
+  p->root = p->nil; // 초기 Root 는 nil 로 설정
+
+  // 생성한 트리 반환
   return p;
 }
 
@@ -27,9 +33,90 @@ void delete_rbtree(rbtree *t)
   free(t);
 }
 
+void rotate_left(rbtree *t, node_t *node)
+{
+  // 1. right_child 의 left 를 node 의 right 와 연결
+  // 2. node 의 parent 와 right_child 를 연결
+  // 3. node 와 right_child 를 연결
+
+  // 기준 노드 node 의 right 를
+  // right_child 라는 포인터 변수로 선언
+  node_t *right_child = node->right;
+
+  // right_child 의 left 는 node 보다 크기 때문에
+  // node 의 right 로 연결해 준다
+  // right_child 의 left 가 nil node 가 아닌 경우
+  // right_child->left 의 부모를 node 로 연결해준다
+  node->right = right_child->left;
+  if (right_child->left != t->nil)
+    right_child->left->parent = node;
+
+  // node 의 parent 와 right_child 를 연결
+  // parent 가 nil node 인 경우 r_c 가 root node
+  right_child->parent = node->parent;
+  if (node->parent == t->nil)
+    t->root = right_child;
+  else if (node == node->parent->left)
+    node->parent->left = right_child;
+  else // node 가 부모의 오른쪽 자식일 때
+    node->parent->right = right_child;
+
+  // node 와 right_child 연결해주기
+  node->parent = right_child;
+  right_child->left = node;
+}
+
+void rotate_right(rbtree *t, node_t *node)
+{
+  node_t *left_child = node->left;
+
+  node->left = left_child->right;
+  if (left_child->right != t->nil)
+    left_child->right->parent = node;
+
+  left_child->parent = node->parent;
+  if (node->parent == t->nil)
+    t->root = left_child;
+  else if (node == node->parent->left)
+    node->parent->left = left_child;
+  else
+    node->parent->right = left_child;
+
+  node->parent = left_child;
+  left_child->right = node;
+}
+
 node_t *rbtree_insert(rbtree *t, const key_t key)
 {
   // TODO: implement insert
+
+  // 최초 노드 생성 시 root 를 만들어주고 초기화
+  // root == NULL 로 확인하면 nil 노드를 사용하는 RBT 규칙을 어긴다
+  if (t->root == t->nil)
+  {
+    t->root = (node_t *)calloc(1, sizeof(node_t));
+    t->root->color = RBTREE_BLACK;
+    t->root->key = key;
+    t->root->parent = t->root->left = t->root->right = t->nil;
+  }
+
+  // 새로 추가하는 New Node 만들기
+  node_t *new = (node_t *)calloc(1, sizeof(node_t));
+  // 현재 위치를 찾는 current Node 를 만들어 root 부터 탐색 시작
+  node_t *current = t->root;
+
+  // t->nil 까지 탐색 진행
+  // current 로 new 가 들어갈 자리를 찾는다
+  while (current != t->nil)
+  {
+    if (current->key > key)
+      current = current->left;
+    else if (current->key < key)
+      current = current->right;
+    else
+      new = current;
+  }
+
   return t->root;
 }
 

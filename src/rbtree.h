@@ -5,7 +5,7 @@
 
 // RBTREE 색을 열거형으로 정의하고, color_t 라는 이름으로 새로운 자료형 정의
 // Red, Black 를 각각 RBTREE_xxx 으로 정의하여 color_t nodeColor; 로 사용 가능
-// ex) nodeColor = RBTREE_RED; or nodeColor = RBTREE_BLACK;
+// ex. nodeColor = RBTREE_RED; or nodeColor = RBTREE_BLACK;
 typedef enum
 {
   RBTREE_RED,
