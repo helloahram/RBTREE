@@ -17,7 +17,7 @@ rbtree *new_rbtree(void)
     return NULL;
   }
 
-  // calloc 이 메모리 할당 + 초기화 이기 때문에 색만 지정
+  // calloc 이 메모리 할당 + 초기화이기 때문에 색만 지정
   p->nil->color = RBTREE_BLACK;
 
   // 트리의 Root Node 와 nil Node 초기화
@@ -33,6 +33,7 @@ void delete_rbtree(rbtree *t)
   free(t);
 }
 
+// FixUp 시 좌회전
 void rotate_left(rbtree *t, node_t *node)
 {
   // 1. right_child 의 left 를 node 의 right 와 연결
@@ -66,6 +67,7 @@ void rotate_left(rbtree *t, node_t *node)
   right_child->left = node;
 }
 
+// FixUp 시 우회전
 void rotate_right(rbtree *t, node_t *node)
 {
   node_t *left_child = node->left;
@@ -105,18 +107,38 @@ node_t *rbtree_insert(rbtree *t, const key_t key)
   // 현재 위치를 찾는 current Node 를 만들어 root 부터 탐색 시작
   node_t *current = t->root;
 
-  // t->nil 까지 탐색 진행
-  // current 로 new 가 들어갈 자리를 찾는다
+  // current 로 t->nil 까지 탐색 진행
+  // left or right 가 nil 이면 new 할당
   while (current != t->nil)
   {
+    // 트리 왼쪽 탐색
     if (current->key > key)
+    {
       current = current->left;
-    else if (current->key < key)
+      if (current->left == t->nil)
+      {
+        current->left = new;
+        break;
+      }
+    }
+    // 트리 오른쪽 탐색
+    if (current->key < key)
+    {
       current = current->right;
-    else
-      new = current;
+      if (current->right == t->nil)
+      {
+        current->right = new;
+        break;
+      }
+    }
+    // new Node 초기화 설정
+    new->key = key;
+    new->parent = current;
+    new->left = new->right = t->nil;
+    new->color = RBTREE_RED; // 삽입 노드는 빨강
   }
 
+  // insert_fix 함수도 구현해줘야함
   return t->root;
 }
 
