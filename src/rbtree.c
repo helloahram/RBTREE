@@ -92,54 +92,130 @@ node_t *rbtree_insert(rbtree *t, const key_t key)
 {
   // TODO: implement insert
 
-  // 최초 노드 생성 시 root 를 만들어주고 초기화
-  // root == NULL 로 확인하면 nil 노드를 사용하는 RBT 규칙을 어긴다
+  // 트리가 비어있는 경우 최초 노드 생성
+  // root == NULL 대신 root == t->nil 로 비교
   if (t->root == t->nil)
   {
     t->root = (node_t *)calloc(1, sizeof(node_t));
-    t->root->color = RBTREE_BLACK;
+    if (t->root == NULL) // 메모리 할당 실패 처리
+      return NULL;
+    t->root->color = RBTREE_BLACK; // 루트 노드는 항상 검정
     t->root->key = key;
     t->root->parent = t->root->left = t->root->right = t->nil;
+
+    return t->root; // 트리가 비어있는 경우 t->root 반환 후 종료
   }
 
-  // 새로 추가하는 New Node 만들기
+  // 새 노드 생성 및 초기화
   node_t *new = (node_t *)calloc(1, sizeof(node_t));
+  if (new == NULL) // 메모리 할당 실패 처리
+    return NULL;
+
+  new->key = key;
+  new->color = RBTREE_RED; // 삽입 노드는 빨강
+  new->left = new->right = t->nil;
+
   // 현재 위치를 찾는 current Node 를 만들어 root 부터 탐색 시작
   node_t *current = t->root;
+  // 새로 삽입할 노드의 부모 추적
+  node_t *parent = t->nil;
 
   // current 로 t->nil 까지 탐색 진행
   // left or right 가 nil 이면 new 할당
+  // while (current != t->nil)
+  // {
+  //   // 트리 왼쪽 탐색
+  //   if (current->key > key)
+  //   {
+  //     current = current->left;
+  //     if (current->left == t->nil)
+  //     {
+  //       current->left = new;
+  //       break;
+  //     }
+  //   }
+  //   // 트리 오른쪽 탐색
+  //   if (current->key < key)
+  //   {
+  //     current = current->right;
+  //     if (current->right == t->nil)
+  //     {
+  //       current->right = new;
+  //       break;
+  //     }
+  //   }
+  // }
+
+  // 새 노드를 삽입할 위치 탐색
   while (current != t->nil)
   {
-    // 트리 왼쪽 탐색
+    parent = current; // 부모 추적
     if (current->key > key)
-    {
       current = current->left;
-      if (current->left == t->nil)
-      {
-        current->left = new;
-        break;
-      }
-    }
-    // 트리 오른쪽 탐색
-    if (current->key < key)
-    {
-      current = current->right;
-      if (current->right == t->nil)
-      {
-        current->right = new;
-        break;
-      }
-    }
-    // new Node 초기화 설정
-    new->key = key;
-    new->parent = current;
-    new->left = new->right = t->nil;
-    new->color = RBTREE_RED; // 삽입 노드는 빨강
+    else if (current->key <= key) // 중복 키 허용
+      current = current->right;   // 중복 키도 오른쪽
   }
 
+  // 부모 노드에 새 노드 연결
+  new->parent = parent;
+  if (parent == t->nil) // 트리가 비어있는 경우
+    t->root = new;      // 새 노드가 루트가 됨
+  else if (parent->key > key)
+    parent->left = new;
+  else
+    parent->right = new;
+
+  // insert_fixup(t, new);
   // insert_fix 함수도 구현해줘야함
   return t->root;
+}
+
+// Insert Fixup 구현
+node_t *insert_fixup(rbtree *t, node_t *new)
+{
+  // 삽입의 경우, 부모가 RED 인 경우만 고려하면 된다 - Case #4 위반
+  // 부모가 존재하고, 부모가 RED 인 경우에 while 루프 진행
+  while (new->parent &&new->parent->color == RBTREE_RED)
+  {
+    // 조부모 포인터 변수 생성
+    node_t *grand_parent = new->parent->parent;
+
+    // 부모가 조부모의 왼쪽 자식인 경우
+    if (grand_parent->left == new->parent)
+    {
+      // 부모가 조부모의 왼쪽 자식인 경우, 오른쪽 자식을 Uncle 로 선언
+      node_t *uncle = grand_parent->right;
+
+      // Case 1, Uncle 이 존재하고, Uncle 이 RED 인 경우
+      if (uncle && uncle->color == RBTREE_RED)
+      { // 조부모를 RED 로, 부모와 삼촌을 BLACK 으로 변경
+        grand_parent->color = RBTREE_RED;
+        new->parent->color = uncle->color = RBTREE_BLACK;
+
+        new = grand_parent; // 기준 노드를 조부모로 변경하여 반복 확인
+      }
+
+      // Case 2, Uncle 이 BLACK 이고, new 가 오른쪽 자식인 경우
+      else if (new->parent->right == new)
+      {
+        // new 의 부모를 기준으로 왼쪽으로 회전 후 Case 3 에서 해결
+        new = new->parent;
+        rotate_left(t, new);
+      }
+
+      // Case 3, Uncle 이 BLACK 이고, new 가 왼쪽 자식인 경우
+      else // if(new->parent->left == new)
+      {
+        // new 의 부모를 BLACK 으로, 조부모를 RED 로 변경
+        new->parent->color = RBTREE_BLACK;
+        grand_parent->color = RBTREE_RED;
+
+        right_rotate(t, grand_parent); // 조부모 기준으로 재귀 우회전 진행
+      }
+    }
+  }
+  // 루트 노트의 색상을 BLACK 으로 변경
+  t->root->color = RBTREE_BLACK;
 }
 
 node_t *rbtree_find(const rbtree *t, const key_t key)
@@ -149,10 +225,10 @@ node_t *rbtree_find(const rbtree *t, const key_t key)
   node_t *current = t->root;
 
   // nil->node 도달까지 (Key 를 못 찾을 때까지) 탐색 진행
-  // 찾는 값 key 과 현재 값 current->key 를 비교
+  // 찾는 값 key 과 현재 값 current 를 비교
   // Current 와 비교했을 때 Key 가 작다면 왼쪽으로 이동
   // Current 와 비교했을 때 Key 가 크다면 오른쪽으로 이동
-  while (current->key != t->nil)
+  while (current != t->nil)
   {
     // 현재 값보다 찾는 값이 클 때 왼쪽으로 이동
     if (current->key > key)
